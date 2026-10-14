@@ -505,7 +505,7 @@ def test_gemini_overview_success_uses_header_key_and_generate_content() -> None:
     request = seen[0]
     assert request.url.host == "generativelanguage.googleapis.com"
     assert request.url.path.endswith(":generateContent")
-    assert "gemini-2.0-flash" in request.url.path
+    assert default_model("gemini") in request.url.path
     assert request.headers["x-goog-api-key"] == KEY
     assert KEY not in str(request.url)  # key in header, never the URL
     payload = json.loads(request.content)
@@ -747,7 +747,7 @@ def test_model_table_covers_all_six_providers() -> None:
     assert default_model("openai") == "gpt-4o-mini"
     assert default_model("groq") == "openai/gpt-oss-120b"
     assert default_model("openrouter") == "openai/gpt-4o-mini"
-    assert default_model("gemini") == "gemini-2.0-flash"
+    assert default_model("gemini") == "gemini-3.5-flash-lite"
     assert default_model("anthropic") == "claude-sonnet-5"
     assert default_model("huggingface") == "openai/gpt-oss-120b"
     for provider_id in ("openai", "groq", "openrouter", "gemini", "anthropic", "huggingface"):

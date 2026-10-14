@@ -45,8 +45,8 @@ PROVIDER_MODELS: dict[str, ProviderModels] = {
         ),
     ),
     "gemini": ProviderModels(
-        default="gemini-3.6-flash",
-        supported=("gemini-3.6-flash", "gemini-3.5-flash-lite"),
+        default="gemini-3.5-flash-lite",
+        supported=("gemini-3.5-flash-lite", "gemini-3.6-flash"),
     ),
     "anthropic": ProviderModels(
         default="claude-sonnet-5",

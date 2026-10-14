@@ -106,29 +106,43 @@ class GeminiProvider(BaseAdapter):
     async def _generate(
         self, api_key: str, *, system: str, user_text: str, max_tokens: int, timeout_s: int
     ) -> AITextResult:
-        model = default_model(self.id)
-        started = perf_counter()
-        body = await self._post_json(
-            f"{self.base_url}/v1beta/models/{quote(model, safe='')}:generateContent",
-            headers=self._headers(api_key),
-            payload={
-                "systemInstruction": {"parts": [{"text": system}]},
-                "contents": [{"parts": [{"text": user_text}]}],
-                "generationConfig": {
-                    "temperature": _GENERATION_TEMPERATURE,
-                    "maxOutputTokens": max_tokens,
-                },
-            },
-            timeout_s=timeout_s,
-        )
-        latency_ms = int((perf_counter() - started) * 1000)
-        text, response_model, usage = self._extract(body)
-        return AITextResult(
-            text=sanitize_ai_text(text),
-            model=(response_model or model)[:128],
-            latency_ms=latency_ms,
-            usage=usage,
-        )
+        models = [default_model(self.id)]
+        for m in supported_models(self.id):
+            if m not in models:
+                models.append(m)
+        last_error: ProviderError | None = None
+        for model in models:
+            started = perf_counter()
+            try:
+                body = await self._post_json(
+                    f"{self.base_url}/v1beta/models/{quote(model, safe='')}:generateContent",
+                    headers=self._headers(api_key),
+                    payload={
+                        "systemInstruction": {"parts": [{"text": system}]},
+                        "contents": [{"parts": [{"text": user_text}]}],
+                        "generationConfig": {
+                            "temperature": _GENERATION_TEMPERATURE,
+                            "maxOutputTokens": max_tokens,
+                        },
+                    },
+                    timeout_s=timeout_s,
+                )
+                latency_ms = int((perf_counter() - started) * 1000)
+                text, response_model, usage = self._extract(body)
+                return AITextResult(
+                    text=sanitize_ai_text(text),
+                    model=(response_model or model)[:128],
+                    latency_ms=latency_ms,
+                    usage=usage,
+                )
+            except ProviderError as exc:
+                if exc.code == "quota":
+                    last_error = exc
+                    continue
+                raise
+        if last_error is not None:
+            raise last_error
+        raise self._unexpected()
 
     def _extract(self, body: Any) -> tuple[str, str | None, dict[str, Any] | None]:
         """Join `candidates[0].content.parts[].text` (safety-blocked or empty
