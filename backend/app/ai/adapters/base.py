@@ -105,6 +105,11 @@ class BaseAdapter(AIProvider):
                     "unavailable", f"{self.display_name} is unavailable right now."
                 ) from None
             status = response.status_code
+            if status == 402:
+                raise ProviderError(
+                    "quota",
+                    f"{self.display_name} requires available billing or credits for this request.",
+                )
             if status == 429 or 500 <= status <= 599:
                 if attempts < MAX_RETRIES:
                     attempts += 1
@@ -161,6 +166,11 @@ class BaseAdapter(AIProvider):
                     "unavailable", f"{self.display_name} is unavailable right now."
                 ) from None
             status = response.status_code
+            if status == 402:
+                raise ProviderError(
+                    "quota",
+                    f"{self.display_name} requires available billing or credits for this request.",
+                )
             if status == 429 or 500 <= status <= 599:
                 if attempts < MAX_RETRIES:
                     attempts += 1

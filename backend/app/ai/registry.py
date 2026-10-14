@@ -36,7 +36,11 @@ PROVIDER_METADATA: dict[str, ProviderMetadata] = {
         display_name="Google Gemini",
         base_url="https://generativelanguage.googleapis.com",
     ),
-    "groq": ProviderMetadata(id="groq", display_name="Groq", base_url="https://api.groq.com"),
+    # The shared OpenAI-compatible adapter appends /v1/...; include Groq's
+    # /openai prefix here so the resulting endpoint paths are valid.
+    "groq": ProviderMetadata(
+        id="groq", display_name="Groq", base_url="https://api.groq.com/openai"
+    ),
     "openai": ProviderMetadata(
         id="openai", display_name="OpenAI", base_url="https://api.openai.com"
     ),
@@ -44,7 +48,7 @@ PROVIDER_METADATA: dict[str, ProviderMetadata] = {
         id="anthropic", display_name="Anthropic", base_url="https://api.anthropic.com"
     ),
     "openrouter": ProviderMetadata(
-        id="openrouter", display_name="OpenRouter", base_url="https://openrouter.ai"
+        id="openrouter", display_name="OpenRouter", base_url="https://openrouter.ai/api"
     ),
     "huggingface": ProviderMetadata(
         id="huggingface",

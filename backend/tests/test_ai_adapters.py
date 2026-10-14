@@ -164,7 +164,13 @@ def test_groq_and_openrouter_share_shape_with_own_identity() -> None:
     bodies: list[dict[str, Any]] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        bodies.append({"host": request.url.host, "referer": request.headers.get("http-referer")})
+        bodies.append(
+            {
+                "host": request.url.host,
+                "path": request.url.path,
+                "referer": request.headers.get("http-referer"),
+            }
+        )
         return httpx.Response(200, json=_chat_response())
 
     groq = GroqProvider(client=_client(handler))
@@ -173,9 +179,29 @@ def test_groq_and_openrouter_share_shape_with_own_identity() -> None:
     run(router.generate_overview(KEY, _overview_payload(), timeout_s=25))
 
     assert bodies[0]["host"] == "api.groq.com"
+    assert bodies[0]["path"] == "/openai/v1/chat/completions"
     assert bodies[0]["referer"] is None  # only OpenRouter sends Referer
     assert bodies[1]["host"] == "openrouter.ai"
+    assert bodies[1]["path"] == "/api/v1/chat/completions"
     assert bodies[1]["referer"] == "http://localhost:3000"  # APP_BASE_URL default
+
+
+def test_groq_and_openrouter_probe_paths_include_provider_prefixes() -> None:
+    seen: list[tuple[str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.url.host, request.url.path))
+        return httpx.Response(200, json={"data": [{"id": "model"}]})
+
+    groq = GroqProvider(client=_client(handler))
+    run(groq.validate_credentials(KEY))
+    router = OpenRouterProvider(client=_client(handler))
+    run(router.validate_credentials(KEY))
+
+    assert seen == [
+        ("api.groq.com", "/openai/v1/models"),
+        ("openrouter.ai", "/api/v1/models"),
+    ]
 
 
 def test_huggingface_shares_shape_over_the_router_host() -> None:
@@ -244,6 +270,23 @@ def test_429_exhausted_maps_quota() -> None:
     assert len(seen) == 3  # max 2 retries, then give up
     assert exc_info.value.code == "quota"
     assert KEY not in exc_info.value.user_message
+
+
+@pytest.mark.parametrize("method", ["GET", "POST"])
+def test_402_maps_to_actionable_billing_error(method: str) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(402, json={"error": "payment required"})
+
+    adapter = OpenAIProvider(client=_client(handler))
+    with pytest.raises(ProviderError) as exc_info:
+        if method == "GET":
+            run(adapter.validate_credentials(KEY))
+        else:
+            run(adapter.generate_overview(KEY, _overview_payload(), timeout_s=25))
+
+    assert exc_info.value.code == "quota"
+    assert "billing or credits" in exc_info.value.user_message
+    assert "payment required" not in exc_info.value.user_message
 
 
 def test_5xx_retries_then_succeeds() -> None:
