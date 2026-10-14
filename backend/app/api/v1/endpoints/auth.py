@@ -22,13 +22,10 @@ from app.schemas.auth import (
     LoginRequest,
     MeResponse,
     RegisterRequest,
-    ResendVerificationRequest,
     ResetPasswordRequest,
-    VerifyEmailRequest,
 )
 from app.services import auth as auth_service
 from app.services.auth import AuthResult, UserInfo
-from app.services.turnstile import verify_turnstile_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -95,11 +92,6 @@ def _request_context(request: Request) -> tuple[str | None, str | None]:
     return request.headers.get("user-agent"), ip
 
 
-def _client_ip(request: Request) -> str | None:
-    """Socket IP for Turnstile remoteip/session context; never trust XFF here."""
-    return request.client.host if request.client else None
-
-
 def _auth_user(result: AuthResult) -> AuthUserResponse:
     return AuthUserResponse(
         id=result.user.id, email=result.user.email, is_verified=result.user.is_verified
@@ -115,13 +107,15 @@ def _auth_user(result: AuthResult) -> AuthUserResponse:
 async def register(
     body: RegisterRequest,
     request: Request,
+    response: Response,
     tasks: BackgroundTasks,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> AuthUserResponse:
-    await verify_turnstile_token(body.turnstile_token, remote_ip=_client_ip(request))
     result = await auth_service.register(
         session, name=body.name, email=str(body.email), password=body.password
     )
+    if result.tokens is not None:
+        _set_session_cookies(response, result)
     _schedule_email(tasks, _email_service(request), result.emails)
     return _auth_user(result)
 
@@ -137,7 +131,6 @@ async def login(
     response: Response,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> AuthUserResponse:
-    await verify_turnstile_token(body.turnstile_token, remote_ip=_client_ip(request))
     user_agent, ip = _request_context(request)
     result = await auth_service.login(
         session, email=str(body.email), password=body.password, user_agent=user_agent, ip=ip
@@ -195,44 +188,6 @@ async def me(user: Annotated[UserInfo, Depends(get_current_user)]) -> MeResponse
 
 
 @router.post(
-    "/verify-email",
-    response_model=AuthUserResponse,
-    dependencies=[Depends(auth_guard("verify"))],
-)
-async def verify_email(
-    body: VerifyEmailRequest,
-    request: Request,
-    response: Response,
-    tasks: BackgroundTasks,
-    session: Annotated[AsyncSession, Depends(get_session)],
-) -> AuthUserResponse:
-    user_agent, ip = _request_context(request)
-    result = await auth_service.verify_email(
-        session, token=body.token, user_agent=user_agent, ip=ip
-    )
-    _set_session_cookies(response, result)
-    _schedule_email(tasks, _email_service(request), result.emails)
-    return _auth_user(result)
-
-
-@router.post(
-    "/resend-verification",
-    status_code=status.HTTP_202_ACCEPTED,
-    dependencies=[Depends(auth_guard("resend"))],
-)
-async def resend_verification(
-    body: ResendVerificationRequest,
-    request: Request,
-    tasks: BackgroundTasks,
-    session: Annotated[AsyncSession, Depends(get_session)],
-) -> dict[str, object]:
-    await verify_turnstile_token(body.turnstile_token, remote_ip=_client_ip(request))
-    emails = await auth_service.resend_verification(session, email=str(body.email))
-    _schedule_email(tasks, _email_service(request), emails)
-    return {}
-
-
-@router.post(
     "/forgot-password",
     status_code=status.HTTP_202_ACCEPTED,
     dependencies=[Depends(auth_guard("forgot"))],
@@ -243,7 +198,6 @@ async def forgot_password(
     tasks: BackgroundTasks,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> dict[str, object]:
-    await verify_turnstile_token(body.turnstile_token, remote_ip=_client_ip(request))
     emails = await auth_service.forgot_password(session, email=str(body.email))
     _schedule_email(tasks, _email_service(request), emails)
     return {}
@@ -259,7 +213,6 @@ async def reset_password(
     tasks: BackgroundTasks,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> dict[str, object]:
-    await verify_turnstile_token(body.turnstile_token, remote_ip=_client_ip(request))
     emails = await auth_service.reset_password(
         session, token=body.token, new_password=body.new_password
     )

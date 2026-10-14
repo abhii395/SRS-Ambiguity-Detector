@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { metadata as verifyEmailMetadata } from "./(auth)/verify-email/page";
 import { metadata as resetPasswordMetadata } from "./(auth)/reset-password/page";
 import { metadata as loginMetadata } from "./(auth)/login/page";
 import { metadata as signupMetadata } from "./(auth)/signup/page";
@@ -34,7 +33,6 @@ const authRouteMetadata = [
   signupMetadata,
   forgotPasswordMetadata,
   resetPasswordMetadata,
-  verifyEmailMetadata,
 ];
 
 const publicMetadata = [
@@ -98,7 +96,7 @@ describe("route SEO contracts", () => {
     const urls = sitemap().map((entry) => entry.url);
     expect(urls).toEqual(publicMetadata.map((route) => `http://localhost:3000${route.path}`));
     expect(JSON.stringify(urls)).not.toMatch(
-      /\/analysis\/|\/analyzer|\/dashboard|\/history|\/settings|\/login|\/signup|reset-password|verify-email|token|\/api\//i,
+      /\/analysis\/|\/analyzer|\/dashboard|\/history|\/settings|\/login|\/signup|reset-password|token|\/api\//i,
     );
   });
 
@@ -120,7 +118,6 @@ describe("route SEO contracts", () => {
         "/signup",
         "/forgot-password",
         "/reset-password",
-        "/verify-email",
         "/*?token=",
         "/*&token=",
       ]),

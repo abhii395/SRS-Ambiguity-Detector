@@ -1,7 +1,7 @@
 """Console + file-outbox adapter (LOCAL DEV ONLY — refused in production).
 
 Logs metadata (to/template/subject) WITHOUT tokens or links, and writes the full
-rendered mail (including the clickable link) to DEV_OUTBOX_DIR so the verify/reset
+rendered mail (including the clickable link) to DEV_OUTBOX_DIR so the password-reset
 flows are manually testable without a provider. The outbox dir is git-ignored;
 production use raises at factory time (fail closed).
 """

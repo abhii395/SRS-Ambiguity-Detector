@@ -7,7 +7,6 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.auth_tokens import (
-    EmailVerificationToken,
     PasswordResetToken,
     RefreshToken,
 )
@@ -108,42 +107,6 @@ class RefreshTokenRepository:
             update(RefreshToken)
             .where(RefreshToken.owner_id == owner_id, RefreshToken.revoked_at.is_(None))
             .values(revoked_at=now)
-        )
-
-
-class EmailVerificationTokenRepository:
-    """Single-use verification tokens (consumed rows are kept as audit)."""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
-
-    async def create(
-        self, *, owner_id: uuid.UUID, token_hash: str, expires_at: dt.datetime
-    ) -> EmailVerificationToken:
-        row = EmailVerificationToken(
-            owner_id=owner_id, token_hash=token_hash, expires_at=expires_at
-        )
-        self._session.add(row)
-        await self._session.flush()
-        return row
-
-    async def get_by_hash(self, token_hash: str) -> EmailVerificationToken | None:
-        result = await self._session.execute(
-            select(EmailVerificationToken).where(EmailVerificationToken.token_hash == token_hash)
-        )
-        return result.scalar_one_or_none()
-
-    async def mark_consumed(self, row: EmailVerificationToken, *, now: dt.datetime) -> None:
-        row.consumed_at = now
-        await self._session.flush()
-
-    async def delete_pending_for_owner(self, owner_id: uuid.UUID) -> None:
-        """Drop superseded unconsumed tokens (resend issues exactly one live token)."""
-        await self._session.execute(
-            delete(EmailVerificationToken).where(
-                EmailVerificationToken.owner_id == owner_id,
-                EmailVerificationToken.consumed_at.is_(None),
-            )
         )
 
 

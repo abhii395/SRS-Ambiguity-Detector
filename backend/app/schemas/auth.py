@@ -18,8 +18,6 @@ class RegisterRequest(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     email: EmailStr = Field(max_length=320)
     password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
-    # Accepted for forward-compat; verified server-side from Stage 22.
-    turnstile_token: str | None = Field(default=None, max_length=2048)
 
     @field_validator("name")
     @classmethod
@@ -39,21 +37,6 @@ class LoginRequest(BaseModel):
     email: EmailStr = Field(max_length=320)
     # Non-empty only — the hash decides (never leak policy on login).
     password: str = Field(min_length=1, max_length=PASSWORD_MAX_LENGTH)
-    turnstile_token: str | None = Field(default=None, max_length=2048)
-
-    @field_validator("email")
-    @classmethod
-    def _normalize_email(cls, value: str) -> str:
-        return normalize_email(value)
-
-
-class VerifyEmailRequest(BaseModel):
-    token: str = Field(min_length=16, max_length=128)
-
-
-class ResendVerificationRequest(BaseModel):
-    email: EmailStr = Field(max_length=320)
-    turnstile_token: str | None = Field(default=None, max_length=2048)
 
     @field_validator("email")
     @classmethod
@@ -63,7 +46,6 @@ class ResendVerificationRequest(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr = Field(max_length=320)
-    turnstile_token: str | None = Field(default=None, max_length=2048)
 
     @field_validator("email")
     @classmethod
@@ -74,7 +56,6 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str = Field(min_length=16, max_length=128)
     new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
-    turnstile_token: str | None = Field(default=None, max_length=2048)
 
 
 class ChangePasswordRequest(BaseModel):
@@ -87,7 +68,7 @@ class DeleteAccountRequest(BaseModel):
 
 
 class AuthUserResponse(BaseModel):
-    """register/login/verify shape (API_CONTRACT §4.2 — sessions ride cookies)."""
+    """register/login shape (API_CONTRACT §4.2 — sessions ride cookies)."""
 
     id: uuid.UUID
     email: str

@@ -43,23 +43,6 @@ class RefreshToken(Base, CreatedMixin):
     owner: Mapped["User"] = relationship(back_populates="refresh_tokens")
 
 
-class EmailVerificationToken(Base, CreatedMixin):
-    """Single-use email-verification tokens (`consumed_at` set on success)."""
-
-    __tablename__ = "email_verification_tokens"
-    __table_args__ = (Index("ix_email_verification_tokens_owner", "owner_id"),)
-
-    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    owner_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    )
-    token_hash: Mapped[str] = mapped_column(CHAR(64), unique=True, nullable=False)
-    expires_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    consumed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
-
-    owner: Mapped["User"] = relationship(back_populates="email_verification_tokens")
-
-
 class PasswordResetToken(Base, CreatedMixin):
     """Single-use password-reset tokens (`consumed_at` set on success)."""
 

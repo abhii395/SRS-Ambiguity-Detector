@@ -55,13 +55,6 @@ class InvalidCredentialsError(AppError):
         super().__init__("invalid_credentials", "Invalid email or password.", 401)
 
 
-class EmailNotVerifiedError(AppError):
-    """403 — session valid but email unverified (verified-user gate)."""
-
-    def __init__(self) -> None:
-        super().__init__("email_unverified", "Please verify your email to continue.", 403)
-
-
 class AccountDisabledError(AppError):
     """403 — password correct but account deactivated (post-auth, no oracle)."""
 
@@ -90,42 +83,6 @@ class RateLimitedError(AppError):
     def __init__(self, retry_after_seconds: int) -> None:
         super().__init__("rate_limited", "Too many attempts. Please try again shortly.", 429)
         self.retry_after_seconds = retry_after_seconds
-
-
-class TurnstileRequiredError(AppError):
-    """400 — a protected public-auth action omitted the Turnstile token."""
-
-    def __init__(self) -> None:
-        super().__init__("turnstile_required", "Verification is required.", 400)
-
-
-class TurnstileInvalidError(AppError):
-    """400 — Cloudflare rejected the client token (bad/expired/reused)."""
-
-    def __init__(self) -> None:
-        super().__init__("turnstile_invalid", "Verification failed. Please try again.", 400)
-
-
-class TurnstileUnavailableError(AppError):
-    """503 — verification could not be completed safely; fail closed."""
-
-    def __init__(self) -> None:
-        super().__init__(
-            "turnstile_unavailable",
-            "Verification is temporarily unavailable. Please try again shortly.",
-            503,
-        )
-
-
-class TurnstileConfigurationError(AppError):
-    """503 — protected endpoint called with Turnstile misconfigured server-side."""
-
-    def __init__(self) -> None:
-        super().__init__(
-            "turnstile_configuration_error",
-            "Verification is not configured correctly.",
-            503,
-        )
 
 
 class CurrentPasswordError(AppError):

@@ -10,9 +10,7 @@ import {
   refreshSession,
   register,
   requestPasswordReset,
-  resendVerification,
   resetPassword,
-  verifyEmail,
 } from "./auth";
 
 function jsonResponse(data: unknown, status = 200): Response {
@@ -41,7 +39,7 @@ afterEach(() => {
 });
 
 describe("auth api layer", () => {
-  it("registers with exactly name/email/password when Turnstile token is absent", async () => {
+  it("registers with exactly name/email/password", async () => {
     const inits: Array<RequestInit | undefined> = [];
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       inits.push(init);
@@ -60,7 +58,7 @@ describe("auth api layer", () => {
     });
   });
 
-  it("logs in with email/password only when Turnstile token is absent", async () => {
+  it("logs in with email/password only", async () => {
     const inits: Array<RequestInit | undefined> = [];
     vi.stubGlobal(
       "fetch",
@@ -77,50 +75,21 @@ describe("auth api layer", () => {
     });
   });
 
-  it("sends optional Turnstile tokens on public auth abuse targets", async () => {
+  it("sends only auth fields for register, login, forgot, and reset", async () => {
     const bodies: unknown[] = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        bodies.push(JSON.parse(String(init?.body)));
-        return jsonResponse({});
-      }),
-    );
-
-    await register({
-      name: "Ada",
-      email: "ada@example.com",
-      password: "long-enough-1",
-      turnstile_token: "captcha-register",
-    });
-    await login({
-      email: "ada@example.com",
-      password: "long-enough-1",
-      turnstile_token: "captcha-login",
-    });
-    await resendVerification({ email: "a@b.co", turnstile_token: "captcha-resend" });
-    await requestPasswordReset({ email: "a@b.co", turnstile_token: "captcha-forgot" });
-    await resetPassword({
-      token: "tok",
-      new_password: "new-password-12",
-      turnstile_token: "captcha-reset",
-    });
-
+    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return jsonResponse({});
+    }));
+    await register({ name: "Ada", email: "ada@example.com", password: "long-enough-1" });
+    await login({ email: "ada@example.com", password: "long-enough-1" });
+    await requestPasswordReset({ email: "a@b.co" });
+    await resetPassword({ token: "tok", new_password: "new-password-12" });
     expect(bodies).toEqual([
-      {
-        name: "Ada",
-        email: "ada@example.com",
-        password: "long-enough-1",
-        turnstile_token: "captcha-register",
-      },
-      {
-        email: "ada@example.com",
-        password: "long-enough-1",
-        turnstile_token: "captcha-login",
-      },
-      { email: "a@b.co", turnstile_token: "captcha-resend" },
-      { email: "a@b.co", turnstile_token: "captcha-forgot" },
-      { token: "tok", new_password: "new-password-12", turnstile_token: "captcha-reset" },
+      { name: "Ada", email: "ada@example.com", password: "long-enough-1" },
+      { email: "ada@example.com", password: "long-enough-1" },
+      { email: "a@b.co" },
+      { token: "tok", new_password: "new-password-12" },
     ]);
   });
 
@@ -132,28 +101,21 @@ describe("auth api layer", () => {
     await expect(logout()).resolves.toBeUndefined();
   });
 
-  it("sends token/email payloads for verify/resend/forgot/reset", async () => {
+  it("sends email payloads for forgot/reset", async () => {
     const urls: string[] = [];
     const bodies: unknown[] = [];
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       urls.push(String(input));
       bodies.push(JSON.parse(String(init?.body)));
       return jsonResponse({});
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    await verifyEmail({ token: "tok" });
-    await resendVerification({ email: "a@b.co" });
+    }));
     await requestPasswordReset({ email: "a@b.co" });
     await resetPassword({ token: "tok", new_password: "new-password-12" });
     expect(urls).toEqual([
-      expect.stringContaining("/auth/verify-email"),
-      expect.stringContaining("/auth/resend-verification"),
       expect.stringContaining("/auth/forgot-password"),
       expect.stringContaining("/auth/reset-password"),
     ]);
     expect(bodies).toEqual([
-      { token: "tok" },
-      { email: "a@b.co" },
       { email: "a@b.co" },
       { token: "tok", new_password: "new-password-12" },
     ]);

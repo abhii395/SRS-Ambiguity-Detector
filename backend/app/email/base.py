@@ -8,9 +8,6 @@ links — adapters must NEVER log them (log to/template/subject only).
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-# Template ids. verify/reset link paths are a Stage 04 contract choice
-# (API_CONTRACT §4.2); Stage 05 implements these frontend routes.
-TEMPLATE_VERIFY_EMAIL = "verify_email"
 TEMPLATE_RESET_PASSWORD = "reset_password"  # noqa: S105 — template id, not a credential
 TEMPLATE_SECURITY_NOTICE = "security_notice"
 TEMPLATE_ACCOUNT_EXISTS = "account_exists"
@@ -36,17 +33,7 @@ def render_email(message: EmailMessage, app_base_url: str) -> tuple[str, str]:
     (programmer error, never user input). All interpolated vars are escaped."""
     base = app_base_url.rstrip("/")
     ctx = message.context
-    if message.template == TEMPLATE_VERIFY_EMAIL:
-        subject = "Verify your email — SRS Ambiguity Detector"
-        link = f"{base}/verify-email?token={ctx['token']}"
-        body = (
-            f"<p>Hi {_escape(ctx.get('name', 'there'))},</p>"
-            "<p>Confirm your email address to activate your account:</p>"
-            f'<p><a href="{_escape(link)}">Verify email</a></p>'
-            f"<p>This link expires in {_escape(ctx.get('expiry_hours', '24'))} hours. "
-            "If you didn't create this account, you can ignore this email.</p>"
-        )
-    elif message.template == TEMPLATE_RESET_PASSWORD:
+    if message.template == TEMPLATE_RESET_PASSWORD:
         subject = "Reset your password — SRS Ambiguity Detector"
         link = f"{base}/reset-password?token={ctx['token']}"
         body = (
@@ -79,7 +66,7 @@ def render_email(message: EmailMessage, app_base_url: str) -> tuple[str, str]:
 class EmailService(ABC):
     """Transactional-email port. `send` is best-effort BY CONTRACT: adapters MUST
     catch transport errors, log safely (never token/link/body), and NOT raise —
-    callers schedule sends as post-commit background work with resend endpoints
+    callers schedule sends as post-commit background work
     as the recovery path (ARCHITECTURE auth flows)."""
 
     @abstractmethod

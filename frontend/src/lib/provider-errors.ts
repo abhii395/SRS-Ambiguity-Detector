@@ -37,8 +37,6 @@ export function providerErrorMessage(err: unknown, context: ProviderErrorContext
       return conflictMessage(context);
     case "validation_error":
       return "Please check the highlighted fields and try again.";
-    case "email_unverified":
-      return "Please verify your email to continue.";
     case "unauthenticated":
     case "invalid_token":
       return "Your session has expired. Please sign in again.";

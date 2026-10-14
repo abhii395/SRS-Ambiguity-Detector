@@ -321,13 +321,12 @@ describe("SettingsScreen load states", () => {
     expect(alert.textContent).toContain("The service returned an unexpected response.");
   });
 
-  it("gates unverified users behind the verify nudge (no provider fetch)", async () => {
+  it("allows unconfirmed accounts to access settings", async () => {
     const store = createStore([credential()]);
     store.verified = false;
     renderScreen();
-
-    expect(await screen.findByText("Verify your email to continue")).toBeDefined();
-    expect(store.listGets()).toHaveLength(0);
+    expect(await screen.findByText("AI providers")).toBeDefined();
+    expect(store.listGets()).toHaveLength(1);
   });
 });
 

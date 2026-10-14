@@ -133,12 +133,12 @@ export function PrivacySection() {
         <p>
           Deleting an analysis in History removes it permanently, including its uploaded file when
           that file is no longer referenced. Deleting your account below removes profile data,
-          analyses, documents, storage objects, sessions, reset/verification tokens, and saved
+          analyses, documents, storage objects, sessions, password-reset tokens, and saved
           provider-key ciphertext.
         </p>
         <p>
           Export includes profile data, analysis/report content, document metadata, and provider
-          metadata only. It never includes passwords, session tokens, reset/verification tokens,
+          metadata only. It never includes passwords, session tokens, password-reset tokens,
           provider API keys, encrypted key ciphertext, storage paths, or stored file bytes.
         </p>
 

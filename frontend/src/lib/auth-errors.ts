@@ -10,14 +10,12 @@ import { ApiRequestError } from "./api";
 
 /** Which flow failed — `invalid_token` copy depends on it. */
 export type AuthErrorContext =
-  "login" | "register" | "verify" | "resend" | "forgot" | "reset" | "change" | "session";
+  "login" | "register" | "forgot" | "reset" | "change" | "session";
 
 const GENERIC_FALLBACK = "Something went wrong. Please try again.";
 
 function invalidTokenMessage(context: AuthErrorContext): string {
   switch (context) {
-    case "verify":
-      return "This verification link is invalid or has expired.";
     case "reset":
       return "This reset link is invalid or has expired.";
     case "session":
@@ -33,8 +31,6 @@ export function authErrorMessage(err: unknown, context: AuthErrorContext): strin
   switch (err.code) {
     case "invalid_credentials":
       return "Invalid email or password.";
-    case "email_unverified":
-      return "Please verify your email to continue.";
     case "account_disabled":
       return "This account has been disabled.";
     case "invalid_token":
@@ -47,14 +43,6 @@ export function authErrorMessage(err: unknown, context: AuthErrorContext): strin
       return "Please check the highlighted fields and try again.";
     case "rate_limited":
       return "Too many attempts. Please try again later.";
-    case "turnstile_required":
-      return "Complete the verification challenge and try again.";
-    case "turnstile_invalid":
-      return "Verification expired or failed. Please try again.";
-    case "turnstile_unavailable":
-      return "Verification is temporarily unavailable. Please try again shortly.";
-    case "turnstile_configuration_error":
-      return "Verification is not configured correctly. Please contact support.";
     case "forbidden":
       return "You don't have permission to do that.";
     case "unauthenticated":

@@ -31,8 +31,10 @@ PROVIDER_MODELS: dict[str, ProviderModels] = {
         supported=("gpt-4o-mini", "gpt-4o"),
     ),
     "groq": ProviderModels(
-        default="llama-3.3-70b-versatile",
-        supported=("llama-3.3-70b-versatile", "llama-3.1-8b-instant"),
+        # Groq retired both Llama ids in August 2026. Keep the default and
+        # fallback on the successor models currently documented by Groq.
+        default="openai/gpt-oss-120b",
+        supported=("openai/gpt-oss-120b", "openai/gpt-oss-20b"),
     ),
     "openrouter": ProviderModels(
         default="openai/gpt-4o-mini",

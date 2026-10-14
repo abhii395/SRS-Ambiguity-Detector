@@ -11,7 +11,6 @@ function serverError(code: string): ApiRequestError {
 describe("authErrorMessage", () => {
   it.each([
     ["invalid_credentials", "login", "Invalid email or password."],
-    ["email_unverified", "login", "Please verify your email to continue."],
     ["account_disabled", "login", "This account has been disabled."],
     [
       "password_too_weak",
@@ -32,7 +31,6 @@ describe("authErrorMessage", () => {
   );
 
   it.each([
-    ["verify", "This verification link is invalid or has expired."],
     ["reset", "This reset link is invalid or has expired."],
     ["session", "Your session has expired. Please log in again."],
     ["login", "Your session has expired. Please log in again."],

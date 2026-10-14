@@ -39,7 +39,6 @@ describe("SEO site URL helpers", () => {
 
   it("builds absolute URLs without preserving token query parameters", () => {
     expect(absoluteUrl("/reset-password")).toBe("http://localhost:3000/reset-password");
-    expect(absoluteUrl("/verify-email")).toBe("http://localhost:3000/verify-email");
   });
 });
 

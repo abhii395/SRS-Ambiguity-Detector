@@ -702,7 +702,7 @@ def test_anthropic_non_text_blocks_are_not_text() -> None:
 
 def test_model_table_covers_all_six_providers() -> None:
     assert default_model("openai") == "gpt-4o-mini"
-    assert default_model("groq") == "llama-3.3-70b-versatile"
+    assert default_model("groq") == "openai/gpt-oss-120b"
     assert default_model("openrouter") == "openai/gpt-4o-mini"
     assert default_model("gemini") == "gemini-2.0-flash"
     assert default_model("anthropic") == "claude-sonnet-5"

@@ -421,7 +421,7 @@ function DashboardContent() {
 
 export function DashboardScreen() {
   return (
-    <ProtectedRoute requireVerified>
+    <ProtectedRoute>
       <DashboardContent />
     </ProtectedRoute>
   );

@@ -40,7 +40,6 @@ describe("provider error copy", () => {
     );
     expect(providerErrorMessage(coded("unauthenticated"), "test")).toContain("expired");
     expect(providerErrorMessage(coded("invalid_token"), "load")).toContain("expired");
-    expect(providerErrorMessage(coded("email_unverified"), "load")).toContain("verify your email");
     expect(providerErrorMessage(coded("forbidden"), "delete")).toContain("don't have permission");
   });
 

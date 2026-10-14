@@ -252,13 +252,16 @@ describe("AuthProvider", () => {
     expect(screen.getByTestId("status").textContent).toBe("unauthenticated:none");
   });
 
-  it("signup() registers WITHOUT logging in (contract §4.2)", async () => {
-    // Register succeeds; identity must NOT change (no session cookies set).
+  it("signup() registers and resolves the new session", async () => {
+    let registered = false;
     const fetchMock = stubFetch((url) => {
       if (url.includes("/auth/register")) {
-        return jsonResponse({ id: "user-1", email: USER.email, is_verified: false }, 201);
+        registered = true;
+        return jsonResponse({ id: "user-1", email: USER.email, is_verified: true }, 201);
       }
-      if (url.includes("/auth/me")) return envelope("unauthenticated", 401);
+      if (url.includes("/auth/me")) {
+        return registered ? jsonResponse(USER) : envelope("unauthenticated", 401);
+      }
       return envelope("invalid_token", 400);
     });
     render(
@@ -277,14 +280,14 @@ describe("AuthProvider", () => {
         password: "long-enough-1",
       });
     });
-    expect(session).toEqual({ id: "user-1", email: USER.email, is_verified: false });
-    expect(screen.getByTestId("status").textContent).toBe("unauthenticated:none");
-    // Exactly one register call and NO identity refresh (nothing to refresh).
+    expect(session).toEqual({ id: "user-1", email: USER.email, is_verified: true });
+    expect(screen.getByTestId("status").textContent).toBe("authenticated:ada@example.com");
+    // One initial identity read and one post-registration session read.
     expect(
       fetchMock.mock.calls.filter(([url]) => String(url).includes("/auth/register")),
     ).toHaveLength(1);
     expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/auth/me"))).toHaveLength(
-      1,
+      2,
     );
   });
 });

@@ -35,7 +35,6 @@ from app.email.base import (
     TEMPLATE_ACCOUNT_EXISTS,
     TEMPLATE_RESET_PASSWORD,
     TEMPLATE_SECURITY_NOTICE,
-    TEMPLATE_VERIFY_EMAIL,
     EmailMessage,
 )
 from app.exceptions import (
@@ -48,7 +47,6 @@ from app.exceptions import (
 )
 from app.models.user import User
 from app.repositories.auth import (
-    EmailVerificationTokenRepository,
     PasswordResetTokenRepository,
     RefreshTokenRepository,
     UserRepository,
@@ -137,16 +135,14 @@ async def _issue_session(
 
 
 async def _duplicate_registration(email: str, user: User) -> AuthResult:
-    """Synthetic 201 for an existing email: fully fake identity (random id, forced
-    unverified) + an 'account exists' notice to the real inbox (the legitimate
-    owner learns via email; the requester learns nothing)."""
+    """Synthetic response for an existing email, preserving anti-enumeration."""
     await _dummy_password_work()  # match the hash cost of a real registration
     logger.info("duplicate registration attempt user_id=%s", user.id)
     synthetic = UserInfo(
         id=uuid.uuid4(),
         email=email,
         display_name=None,
-        is_verified=False,
+        is_verified=True,
         is_active=True,
         created_at=utcnow(),
     )
@@ -156,9 +152,7 @@ async def _duplicate_registration(email: str, user: User) -> AuthResult:
 
 @transactional
 async def register(session: AsyncSession, *, name: str, email: str, password: str) -> AuthResult:
-    """Create an unverified account + verification token (201 either way: existing
-    emails get the synthetic duplicate path — no oracle, even on races)."""
-    settings = get_settings()
+    """Create an account and issue a session, preserving anti-enumeration."""
     email_n = normalize_email(email)
     _check_password_policy(password, email_n)
     users = UserRepository(session)
@@ -168,6 +162,7 @@ async def register(session: AsyncSession, *, name: str, email: str, password: st
     try:
         password_hash = await hash_password(password)
         user = await users.create(email=email_n, display_name=name, password_hash=password_hash)
+        user.is_verified = True
     except IntegrityError:
         # Lost a concurrent-registration race: roll back (rollback expires ORM
         # state) and re-read fresh before taking the duplicate path.
@@ -176,31 +171,16 @@ async def register(session: AsyncSession, *, name: str, email: str, password: st
         if raced is None:  # pragma: no cover — defensive; impossible post-conflict
             raise
         return await _duplicate_registration(email_n, raced)
-    raw_token = generate_token()
-    await EmailVerificationTokenRepository(session).create(
-        owner_id=user.id,
-        token_hash=hash_token(raw_token),
-        expires_at=utcnow() + timedelta(hours=settings.EMAIL_VERIFICATION_HOURS),
-    )
+    tokens = await _issue_session(RefreshTokenRepository(session), user, user_agent=None, ip=None)
     logger.info("user registered user_id=%s", user.id)
-    verify = EmailMessage(
-        to=email_n,
-        template=TEMPLATE_VERIFY_EMAIL,
-        context={
-            "token": raw_token,
-            "name": name,
-            "expiry_hours": str(settings.EMAIL_VERIFICATION_HOURS),
-        },
-    )
-    return AuthResult(user=_info(user), tokens=None, emails=(verify,))
+    return AuthResult(user=_info(user), tokens=tokens, emails=())
 
 
 @transactional
 async def login(
     session: AsyncSession, *, email: str, password: str, user_agent: str | None, ip: str | None
 ) -> AuthResult:
-    """Validate credentials → session pair (issued even when unverified; app
-    resources gate on verification per-endpoint). Unknown email, IdP account,
+    """Validate credentials → session pair. Unknown email, IdP account,
     and bad password are indistinguishable (401 + dummy work)."""
     email_n = normalize_email(email)
     users = UserRepository(session)
@@ -218,7 +198,7 @@ async def login(
     tokens = await _issue_session(
         RefreshTokenRepository(session), user, user_agent=user_agent, ip=ip
     )
-    logger.info("login ok user_id=%s verified=%s", user.id, user.is_verified)
+    logger.info("login ok user_id=%s", user.id)
     return AuthResult(user=_info(user), tokens=tokens, emails=())
 
 
@@ -278,69 +258,6 @@ async def logout(session: AsyncSession, *, refresh_token: str | None) -> None:
     if row is not None and row.revoked_at is None:
         await repo.revoke(row, now=utcnow())
         logger.info("logout ok owner_id=%s", row.owner_id)
-
-
-@transactional
-async def verify_email(
-    session: AsyncSession, *, token: str, user_agent: str | None, ip: str | None
-) -> AuthResult:
-    """Consume a verification token → verified account + fresh session (auto-login
-    per contract). Unknown/consumed/expired tokens share one honest 400."""
-    repo = EmailVerificationTokenRepository(session)
-    row = await repo.get_by_hash(hash_token(token))
-    now = utcnow()
-    if row is None or row.consumed_at is not None or row.expires_at <= now:
-        raise InvalidTokenError()
-    users = UserRepository(session)
-    user = await users.get_by_id(row.owner_id)
-    if user is None or not user.is_active:
-        raise InvalidTokenError()
-    await repo.mark_consumed(row, now=now)
-    await users.set_verified(user)
-    tokens = await _issue_session(
-        RefreshTokenRepository(session), user, user_agent=user_agent, ip=ip
-    )
-    logger.info("email verified user_id=%s", user.id)
-    notice = EmailMessage(
-        to=user.email,
-        template=TEMPLATE_SECURITY_NOTICE,
-        context={
-            "title": "Email verified",
-            "detail": "Your email address was verified and your account is now active.",
-        },
-    )
-    return AuthResult(user=_info(user), tokens=tokens, emails=(notice,))
-
-
-@transactional
-async def resend_verification(session: AsyncSession, *, email: str) -> tuple[EmailMessage, ...]:
-    """Issue a fresh verification token (superseding pending ones). Unknown /
-    verified / inactive addresses are silently accepted (always-202, no oracle)."""
-    settings = get_settings()
-    email_n = normalize_email(email)
-    user = await UserRepository(session).get_by_email(email_n)
-    if user is None or user.is_verified or not user.is_active:
-        return ()
-    repo = EmailVerificationTokenRepository(session)
-    await repo.delete_pending_for_owner(user.id)
-    raw_token = generate_token()
-    await repo.create(
-        owner_id=user.id,
-        token_hash=hash_token(raw_token),
-        expires_at=utcnow() + timedelta(hours=settings.EMAIL_VERIFICATION_HOURS),
-    )
-    logger.info("verification re-sent user_id=%s", user.id)
-    return (
-        EmailMessage(
-            to=email_n,
-            template=TEMPLATE_VERIFY_EMAIL,
-            context={
-                "token": raw_token,
-                "name": user.display_name or "there",
-                "expiry_hours": str(settings.EMAIL_VERIFICATION_HOURS),
-            },
-        ),
-    )
 
 
 @transactional

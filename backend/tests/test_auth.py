@@ -16,7 +16,6 @@ from httpx import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from app.api.v1.endpoints import auth as auth_endpoint
 from app.core.config import get_settings
 from app.core.database import normalize_url
 from app.core.rate_limit import reset_rate_limiter
@@ -218,15 +217,6 @@ def test_register_invalid_email_is_validation_error(auth_client: TestClient) -> 
     resp = _register(auth_client, "not-an-email")
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "validation_error"
-
-
-def test_register_accepts_and_ignores_turnstile_token(auth_client: TestClient) -> None:
-    resp = _register(
-        auth_client,
-        _email("turn"),
-        turnstile_token="any-client-token",  # noqa: S106 — accepted-and-ignored
-    )
-    assert resp.status_code == 201  # verified in Stage 22; accepted until then
 
 
 # --- login ------------------------------------------------------------------
@@ -700,10 +690,6 @@ def test_secure_cookie_flag_in_production(
     monkeypatch.setenv("EMAIL_PROVIDER", "resend")
     monkeypatch.setenv("RESEND_API_KEY", "test-only-dummy-key")
 
-    async def accept_turnstile(_: str | None, *, remote_ip: str | None) -> None:
-        _ = remote_ip
-
-    monkeypatch.setattr(auth_endpoint, "verify_turnstile_token", accept_turnstile)
     os.environ["JWT_SECRET"] = "stage04-test-jwt-secret-32-bytes-minimum"  # noqa: S105
     get_settings.cache_clear()
     try:

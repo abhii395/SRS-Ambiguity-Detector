@@ -256,43 +256,25 @@ describe("AuthCard", () => {
     await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/dashboard"));
   });
 
-  it("shows the verify-pending panel after signup (no navigation)", async () => {
+  it("starts the session and navigates after signup", async () => {
     const user = userEvent.setup();
+    let registered = false;
     stubLoggedOut((url) => {
       if (url.includes("/auth/register")) {
-        return jsonResponse({ id: "user-1", email: USER.email, is_verified: false }, 201);
+        registered = true;
+        return jsonResponse({ id: "user-1", email: USER.email, is_verified: true }, 201);
       }
-      if (url.includes("/auth/resend-verification")) return jsonResponse({});
+      if (url.includes("/auth/me") && registered) return jsonResponse(USER);
       return null;
     });
-    render(
-      <AuthProvider>
-        <AuthCard initialMode="signup" />
-      </AuthProvider>,
-    );
-    await waitFor(() =>
-      expect(screen.getByRole("form", { name: "Create account" })).not.toBeNull(),
-    );
+    render(<AuthProvider><AuthCard initialMode="signup" /></AuthProvider>);
+    await waitFor(() => expect(screen.getByRole("form", { name: "Create account" })).not.toBeNull());
     const form = signupForm();
     await user.type(form.getByLabelText("Name"), "Ada");
     await user.type(form.getByLabelText("Email"), "ada@example.com");
     await user.type(form.getByLabelText("Password"), "correct-horse-battery9");
     await user.type(form.getByLabelText("Confirm password"), "correct-horse-battery9");
     await user.click(form.getByRole("button", { name: "Create account" }));
-    await waitFor(() =>
-      expect(screen.getByRole("heading", { name: "Check your inbox" })).not.toBeNull(),
-    );
-    expect(document.body.textContent).toContain("ada@example.com");
-    expect(nav.replace).not.toHaveBeenCalled();
-    // Resend recovery works inline with the registered address prefilled.
-    const resend = within(screen.getByRole("form", { name: "Resend verification email" }));
-    expect((resend.getByLabelText("Email") as HTMLInputElement).value).toBe("ada@example.com");
-    await user.click(resend.getByRole("button", { name: "Resend verification email" }));
-    await waitFor(() =>
-      expect(screen.getByRole("status").textContent).toContain("a verification link is on its way"),
-    );
-    expect(
-      screen.getByRole("button", { name: /resend in \d+s/i }).getAttribute("disabled"),
-    ).not.toBeNull();
+    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith("/dashboard"));
   });
 });

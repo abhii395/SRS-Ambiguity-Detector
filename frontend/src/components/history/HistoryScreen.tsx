@@ -301,7 +301,7 @@ function HistoryContent() {
 
 export function HistoryScreen() {
   return (
-    <ProtectedRoute requireVerified>
+    <ProtectedRoute>
       <HistoryContent />
     </ProtectedRoute>
   );

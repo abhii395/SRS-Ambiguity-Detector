@@ -219,18 +219,11 @@ describe("AnalyzerWorkspace", () => {
     );
   });
 
-  it("gates unverified users behind the verify nudge (no editor)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => userResponse(false)),
-    );
-    render(
-      <AuthProvider>
-        <AnalyzerWorkspace />
-      </AuthProvider>,
-    );
-    expect(await screen.findByText("Verify your email to continue")).toBeDefined();
-    expect(screen.queryByLabelText("SRS text")).toBeNull();
+  it("allows any authenticated account to use the analyzer", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => userResponse(false)));
+    render(<AuthProvider><AnalyzerWorkspace /></AuthProvider>);
+    expect(await screen.findByRole("heading", { name: "Analyze requirements" })).toBeDefined();
+    expect(screen.getByLabelText("SRS text")).toBeDefined();
   });
 
   it("links verified users to their analysis history", async () => {

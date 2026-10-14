@@ -7,34 +7,21 @@
  */
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import { requestPasswordReset } from "@/lib/auth";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { normalizeEmail, validateEmail } from "@/lib/auth-validation";
 
 import { FormAlert, SubmitButton, TextField } from "./fields";
-import { TurnstileWidget, isTurnstileConfigured } from "./TurnstileWidget";
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState<string | undefined>(undefined);
   const [formError, setFormError] = useState<string | null>(null);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileReset, setTurnstileReset] = useState(0);
   const [requested, setRequested] = useState(false);
   const [pending, setPending] = useState(false);
 
-  const clearTurnstile = useCallback(() => setTurnstileToken(null), []);
-  const turnstileError = useCallback(() => {
-    setTurnstileToken(null);
-    setFormError("Security verification failed. Please try again.");
-  }, []);
-
-  function resetTurnstile() {
-    setTurnstileToken(null);
-    setTurnstileReset((value) => value + 1);
-  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,21 +30,15 @@ export function ForgotPasswordForm() {
     setEmailError(error ?? undefined);
     setFormError(null);
     if (error) return;
-    if (isTurnstileConfigured() && turnstileToken === null) {
-      setFormError("Complete the security verification and try again.");
-      return;
-    }
 
     setPending(true);
     try {
       await requestPasswordReset({
         email: normalizeEmail(email),
-        turnstile_token: turnstileToken ?? undefined,
       });
       setRequested(true);
     } catch (err) {
       setFormError(authErrorMessage(err, "forgot"));
-      resetTurnstile();
     } finally {
       setPending(false);
     }
@@ -116,13 +97,7 @@ export function ForgotPasswordForm() {
             }}
             error={emailError}
           />
-          <TurnstileWidget
-            onToken={setTurnstileToken}
-            onExpired={clearTurnstile}
-            onError={turnstileError}
-            resetSignal={turnstileReset}
-          />
-          <SubmitButton pending={pending} pendingLabel="Sending…">
+            <SubmitButton pending={pending} pendingLabel="Sending…">
             Send reset link
           </SubmitButton>
         </fieldset>

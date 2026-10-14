@@ -440,7 +440,7 @@ export function SettingsScreen() {
   const [deleted, setDeleted] = useState(false);
   if (deleted) return <AccountDeletedFarewell />;
   return (
-    <ProtectedRoute requireVerified>
+    <ProtectedRoute>
       <SettingsContent onDeleted={() => setDeleted(true)} />
     </ProtectedRoute>
   );

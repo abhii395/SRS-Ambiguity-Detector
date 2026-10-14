@@ -9,7 +9,6 @@ from app.email.base import (
     TEMPLATE_ACCOUNT_EXISTS,
     TEMPLATE_RESET_PASSWORD,
     TEMPLATE_SECURITY_NOTICE,
-    TEMPLATE_VERIFY_EMAIL,
     EmailMessage,
     EmailService,
     render_email,
@@ -25,7 +24,6 @@ __all__ = [
     "TEMPLATE_ACCOUNT_EXISTS",
     "TEMPLATE_RESET_PASSWORD",
     "TEMPLATE_SECURITY_NOTICE",
-    "TEMPLATE_VERIFY_EMAIL",
     "get_email_service",
     "render_email",
 ]

@@ -9,14 +9,13 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
-import { useCallback, useId, useState } from "react";
+import { useId, useState } from "react";
 
 import { resetPassword } from "@/lib/auth";
 import { authErrorMessage, validationFieldErrors } from "@/lib/auth-errors";
 import { validateConfirmPassword, validatePassword, validateToken } from "@/lib/auth-validation";
 
 import { FormAlert, PasswordField, PasswordRequirements, SubmitButton } from "./fields";
-import { TurnstileWidget, isTurnstileConfigured } from "./TurnstileWidget";
 
 export function ResetPasswordForm() {
   const router = useRouter();
@@ -31,21 +30,9 @@ export function ResetPasswordForm() {
   const [passwordError, setPasswordError] = useState<string | undefined>(undefined);
   const [confirmError, setConfirmError] = useState<string | undefined>(undefined);
   const [formError, setFormError] = useState<string | null>(null);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileReset, setTurnstileReset] = useState(0);
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
 
-  const clearTurnstile = useCallback(() => setTurnstileToken(null), []);
-  const turnstileError = useCallback(() => {
-    setTurnstileToken(null);
-    setFormError("Security verification failed. Please try again.");
-  }, []);
-
-  function resetTurnstile() {
-    setTurnstileToken(null);
-    setTurnstileReset((value) => value + 1);
-  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,17 +43,12 @@ export function ResetPasswordForm() {
     setConfirmError(cfError ?? undefined);
     setFormError(null);
     if (pwError ?? cfError) return;
-    if (isTurnstileConfigured() && turnstileToken === null) {
-      setFormError("Complete the security verification and try again.");
-      return;
-    }
 
     setPending(true);
     try {
       await resetPassword({
         token: linkToken,
         new_password: password,
-        turnstile_token: turnstileToken ?? undefined,
       });
       setDone(true);
     } catch (err) {
@@ -75,7 +57,6 @@ export function ResetPasswordForm() {
         setPasswordError(serverFields.new_password ?? serverFields.password);
       }
       setFormError(authErrorMessage(err, "reset"));
-      resetTurnstile();
     } finally {
       setPending(false);
     }
@@ -152,13 +133,7 @@ export function ResetPasswordForm() {
             }}
             error={confirmError}
           />
-          <TurnstileWidget
-            onToken={setTurnstileToken}
-            onExpired={clearTurnstile}
-            onError={turnstileError}
-            resetSignal={turnstileReset}
-          />
-          <SubmitButton pending={pending} pendingLabel="Updating…">
+            <SubmitButton pending={pending} pendingLabel="Updating…">
             Update password
           </SubmitButton>
         </fieldset>

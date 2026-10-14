@@ -40,8 +40,6 @@ export function analysisErrorMessage(err: unknown): string {
       return "That analysis doesn't exist or belongs to a different account.";
     case "validation_error":
       return "Please check your input and try again.";
-    case "email_unverified":
-      return "Please verify your email to continue.";
     case "unauthenticated":
       return "Your session has expired. Please log in again.";
     case "rate_limited":

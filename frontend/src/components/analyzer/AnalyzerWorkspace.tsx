@@ -56,7 +56,7 @@ export function AnalyzerWorkspace() {
   }
 
   return (
-    <ProtectedRoute requireVerified>
+    <ProtectedRoute>
       <Container className="max-w-3xl py-10 sm:py-14">
         <Reveal>
           <p className="font-mono text-xs tracking-[0.2em] text-signal uppercase">Analyzer</p>

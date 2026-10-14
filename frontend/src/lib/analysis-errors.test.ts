@@ -54,7 +54,6 @@ describe("analysisErrorMessage", () => {
 
   it("maps session/permission codes", () => {
     expect(analysisErrorMessage(apiError("unauthenticated"))).toContain("log in again");
-    expect(analysisErrorMessage(apiError("email_unverified"))).toContain("verify your email");
     expect(analysisErrorMessage(apiError("rate_limited"))).toContain("Too many requests");
     expect(analysisErrorMessage(apiError("forbidden"))).toContain("don't have permission");
     expect(analysisErrorMessage(apiError("validation_error"))).toContain("check your input");

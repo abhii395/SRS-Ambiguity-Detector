@@ -18,8 +18,6 @@ export function settingsErrorMessage(err: unknown, context: SettingsErrorContext
       return context === "save"
         ? "That name can't be saved — keep it under 100 characters."
         : GENERIC_FALLBACK;
-    case "email_unverified":
-      return "Please verify your email to continue.";
     case "unauthenticated":
     case "invalid_token":
       return "Your session has expired. Please sign in again.";

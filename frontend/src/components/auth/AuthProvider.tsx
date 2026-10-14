@@ -102,11 +102,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [refreshUser],
   );
 
-  // Register never logs in (contract §4.2): no cookies, no identity change,
-  // no refresh — the session starts at verify-email or login time.
+  // Registration starts a session immediately; resolve identity before navigation.
   const signup = useCallback(async (input: RegisterInput): Promise<AuthSession> => {
-    return await registerRequest(input);
-  }, []);
+    const session = await registerRequest(input);
+    await refreshUser();
+    return session;
+  }, [refreshUser]);
 
   const logout = useCallback(async (): Promise<void> => {
     try {

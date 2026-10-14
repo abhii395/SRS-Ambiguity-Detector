@@ -49,14 +49,13 @@ class Settings(BaseSettings):
     JWT_SECRET: str | None = None
     ACCESS_TOKEN_MINUTES: int = 15
     REFRESH_TOKEN_DAYS: int = 30
-    EMAIL_VERIFICATION_HOURS: int = 24
     PASSWORD_RESET_MINUTES: int = 60
     # resend | console. console = dev-only (metadata logs + full mail to
     # DEV_OUTBOX_DIR, refused in production); resend = Resend HTTP API.
     EMAIL_PROVIDER: Literal["resend", "console"] = "console"
     RESEND_API_KEY: str | None = None
     EMAIL_FROM: str = "SRS Ambiguity Detector <noreply@example.com>"
-    # Public base URL used to build emailed links (verify/reset).
+    # Public base URL used to build password-reset links.
     APP_BASE_URL: str = "http://localhost:3000"
     DEV_OUTBOX_DIR: str = "./.dev-outbox"
     # Auth rate limits (single-process token buckets; Stage 22 distributes).
@@ -112,13 +111,6 @@ class Settings(BaseSettings):
     # Explicit retry budget: retry-ai can trigger the same provider work as a
     # fresh enhanced run, so it gets its own AI bucket (Stage 21 as-built).
     RATE_LIMIT_AI_RETRY_PER_MINUTE: int = 10
-    # --- Stage 22: Cloudflare Turnstile anti-bot (SECURITY_SPEC §7) ---
-    # Local/dev default is OFF; production protected endpoints fail closed unless
-    # enabled with a backend-only secret. The site key is public frontend config.
-    TURNSTILE_ENABLED: bool = False
-    TURNSTILE_SECRET_KEY: str | None = None
-    TURNSTILE_VERIFY_URL: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
-    TURNSTILE_TIMEOUT_SECONDS: float = 3.0
     # --- Stage 24: monitoring / Sentry (optional; never required for local dev) ---
     SENTRY_DSN: str | None = None
     SENTRY_ENVIRONMENT: str | None = None
@@ -182,12 +174,6 @@ class Settings(BaseSettings):
             raise ValueError("AI_MAX_TIMEOUT_S must be at least 1.")
         if not 1 <= self.AI_DEFAULT_TIMEOUT_S <= self.AI_MAX_TIMEOUT_S:
             raise ValueError("AI_DEFAULT_TIMEOUT_S must be within [1, AI_MAX_TIMEOUT_S].")
-        return self
-
-    @model_validator(mode="after")
-    def _turnstile_timeout_positive(self) -> "Settings":
-        if self.TURNSTILE_TIMEOUT_SECONDS < 1:
-            raise ValueError("TURNSTILE_TIMEOUT_SECONDS must be at least 1.")
         return self
 
     @model_validator(mode="after")

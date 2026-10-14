@@ -23,7 +23,6 @@ import { cn } from "@/lib/utils";
 import { LoginForm } from "./LoginForm";
 import { SignupForm } from "./SignupForm";
 import { BLADE_STRIP_PX, TransitionBlade, type BladePhase } from "./TransitionBlade";
-import { VerifyPending } from "./VerifyPending";
 
 export type AuthMode = "login" | "signup";
 
@@ -105,7 +104,6 @@ export function AuthCard({ initialMode }: { initialMode: AuthMode }) {
 
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [phase, setPhase] = useState<BladePhase>("idle");
-  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [cardH, setCardH] = useState(0);
 
@@ -115,12 +113,12 @@ export function AuthCard({ initialMode }: { initialMode: AuthMode }) {
   /** Synchronous re-entry guard — state updates are async, double-clicks aren't. */
   const busyRef = useRef(false);
 
-  // Authenticated visitors don't need these pages (unless mid-verify-pending).
+  // Authenticated visitors do not need the login or signup pages.
   useEffect(() => {
-    if (status === "authenticated" && pendingEmail === null) {
+    if (status === "authenticated") {
       router.replace(AUTH_LANDING_PATH);
     }
-  }, [status, pendingEmail, router]);
+  }, [status, router]);
 
   // Measure the card for the mobile curtain's full-cover height.
   useEffect(() => {
@@ -185,7 +183,7 @@ export function AuthCard({ initialMode }: { initialMode: AuthMode }) {
   );
 
   if (status === "loading") return <AuthCardSkeleton />;
-  if (status === "authenticated" && pendingEmail === null) return null;
+  if (status === "authenticated") return null;
 
   const header = HEADER_COPY[mode];
   const blade = BLADE_COPY[mode];
@@ -202,12 +200,7 @@ export function AuthCard({ initialMode }: { initialMode: AuthMode }) {
         <p aria-live="polite" className="sr-only">
           {announcement}
         </p>
-        {pendingEmail !== null ? (
-          <div className="px-6 py-10 sm:px-12">
-            <VerifyPending email={pendingEmail} />
-          </div>
-        ) : (
-          <div className="flex flex-col sm:grid sm:grid-cols-5">
+        <div className="flex flex-col sm:grid sm:grid-cols-5">
             {/* Spacer the blade docks over — fixed strip on mobile, side column up. */}
             <div
               aria-hidden
@@ -249,7 +242,7 @@ export function AuthCard({ initialMode }: { initialMode: AuthMode }) {
                     inert={mode !== "signup" || sweeping}
                     className={cn(mode !== "signup" && "hidden")}
                   >
-                    <SignupForm onSuccess={(email) => setPendingEmail(email)} />
+                    <SignupForm onSuccess={() => router.replace(AUTH_LANDING_PATH)} />
                   </section>
                 </div>
               </div>
@@ -266,7 +259,6 @@ export function AuthCard({ initialMode }: { initialMode: AuthMode }) {
               onSwitch={() => requestMode(blade.target)}
             />
           </div>
-        )}
         <AuthFooter />
       </div>
     </div>

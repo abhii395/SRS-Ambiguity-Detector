@@ -15,8 +15,7 @@ export interface User {
 }
 
 /**
- * POST register/login/verify-email/refresh — session proof, cookies do the work.
- * (Register returns this shape but sets NO cookies — it never logs in. §4.2.)
+ * POST register/login/refresh — session proof, cookies do the work.
  */
 export interface AuthSession {
   id: string;
@@ -28,33 +27,20 @@ export interface RegisterInput {
   name: string;
   email: string;
   password: string;
-  turnstile_token?: string;
 }
 
 export interface LoginInput {
   email: string;
   password: string;
-  turnstile_token?: string;
-}
-
-export interface VerifyEmailInput {
-  token: string;
-}
-
-export interface ResendVerificationInput {
-  email: string;
-  turnstile_token?: string;
 }
 
 export interface ForgotPasswordInput {
   email: string;
-  turnstile_token?: string;
 }
 
 export interface ResetPasswordInput {
   token: string;
   new_password: string;
-  turnstile_token?: string;
 }
 
 export interface ChangePasswordInput {

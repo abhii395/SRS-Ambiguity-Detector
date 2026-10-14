@@ -17,7 +17,6 @@ from app.core.database import get_session
 from app.core.rate_limit import check_rate_limit
 from app.core.security import decode_access_token
 from app.exceptions import (
-    EmailNotVerifiedError,
     ForbiddenError,
     InvalidTokenError,
     UnauthorizedError,
@@ -46,9 +45,7 @@ async def get_current_user(
 async def get_current_verified_user(
     user: Annotated[UserInfo, Depends(get_current_user)],
 ) -> UserInfo:
-    """Verified-only gate (403 `email_unverified`). Use on all app resources."""
-    if not user.is_verified:
-        raise EmailNotVerifiedError()
+    """Compatibility dependency: app access requires authentication, not email confirmation."""
     return user
 
 
@@ -100,7 +97,7 @@ def auth_user_guard(endpoint: str) -> Callable[..., Awaitable[UserInfo]]:
 def verified_user_guard(
     bucket: str, *, limit: Callable[[], int] | None = None
 ) -> Callable[..., Awaitable[UserInfo]]:
-    """Verified-user resource gate: verified identity + CSRF + per-user limit.
+    """Authenticated resource gate: identity + CSRF + per-user limit.
 
     `bucket` names the rate-limit bucket (`{bucket}:user:{id}`); `limit` is a
     zero-arg callable resolving the per-minute budget AT REQUEST TIME — the

@@ -18,7 +18,6 @@ export const AUTH_ROUTES = [
   "/signup",
   "/forgot-password",
   "/reset-password",
-  "/verify-email",
 ] as const;
 
 const DEFAULT_SITE_URL = "http://localhost:3000";

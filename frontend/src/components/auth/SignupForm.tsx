@@ -1,11 +1,8 @@
 "use client";
 
-/**
- * Registration form. `onSuccess` receives the registered email so the host can
- * show the verify-pending panel (with resend recovery) instead of navigating.
- */
+/** Registration form. A successful account creation starts a session and calls `onSuccess`. */
 
-import { useCallback, useId, useState } from "react";
+import { useId, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { authErrorMessage, validationFieldErrors } from "@/lib/auth-errors";
@@ -19,7 +16,6 @@ import {
 } from "@/lib/auth-validation";
 
 import { FormAlert, PasswordField, PasswordRequirements, SubmitButton, TextField } from "./fields";
-import { TurnstileWidget, isTurnstileConfigured } from "./TurnstileWidget";
 
 interface FieldErrors {
   name?: string;
@@ -37,20 +33,8 @@ export function SignupForm({ onSuccess }: { onSuccess: (email: string) => void }
   const [confirm, setConfirm] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileReset, setTurnstileReset] = useState(0);
   const [pending, setPending] = useState(false);
 
-  const clearTurnstile = useCallback(() => setTurnstileToken(null), []);
-  const turnstileError = useCallback(() => {
-    setTurnstileToken(null);
-    setFormError("Security verification failed. Please try again.");
-  }, []);
-
-  function resetTurnstile() {
-    setTurnstileToken(null);
-    setTurnstileReset((value) => value + 1);
-  }
 
   function clearFieldError(field: keyof FieldErrors) {
     setFieldErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
@@ -72,10 +56,6 @@ export function SignupForm({ onSuccess }: { onSuccess: (email: string) => void }
     setFieldErrors(errors);
     setFormError(null);
     if (errors.name ?? errors.email ?? errors.password ?? errors.confirm) return;
-    if (isTurnstileConfigured() && turnstileToken === null) {
-      setFormError("Complete the security verification and try again.");
-      return;
-    }
 
     setPending(true);
     try {
@@ -84,7 +64,6 @@ export function SignupForm({ onSuccess }: { onSuccess: (email: string) => void }
         name: collapseName(name),
         email: normalizedEmail,
         password,
-        turnstile_token: turnstileToken ?? undefined,
       });
       onSuccess(normalizedEmail);
     } catch (err) {
@@ -96,7 +75,6 @@ export function SignupForm({ onSuccess }: { onSuccess: (email: string) => void }
         password: serverFields.password ?? prev.password,
       }));
       setFormError(authErrorMessage(err, "register"));
-      resetTurnstile();
     } finally {
       setPending(false);
     }
@@ -159,12 +137,6 @@ export function SignupForm({ onSuccess }: { onSuccess: (email: string) => void }
             clearFieldError("confirm");
           }}
           error={fieldErrors.confirm}
-        />
-        <TurnstileWidget
-          onToken={setTurnstileToken}
-          onExpired={clearTurnstile}
-          onError={turnstileError}
-          resetSignal={turnstileReset}
         />
         <SubmitButton pending={pending} pendingLabel="Creating account…">
           Create account

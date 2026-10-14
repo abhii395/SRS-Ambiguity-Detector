@@ -1,8 +1,7 @@
 /**
  * Auth API layer — the ONLY module that talks to `/auth/*`. Built exclusively on
  * the canonical client (`lib/api.ts`): cookies flow via `credentials: "include"`
- * and session tokens never touch JS. Stage 22 adds optional Turnstile tokens
- * to public auth actions; secrets stay server-side only.
+ * and session tokens never touch JS. Public auth actions use the same API client; session tokens stay in httpOnly cookies.
  */
 
 import { api, ApiRequestError } from "./api";
@@ -13,10 +12,8 @@ import type {
   ForgotPasswordInput,
   LoginInput,
   RegisterInput,
-  ResendVerificationInput,
   ResetPasswordInput,
   User,
-  VerifyEmailInput,
 } from "../types/auth";
 
 /**
@@ -32,7 +29,6 @@ export async function register(input: RegisterInput): Promise<AuthSession> {
       name: input.name,
       email: input.email,
       password: input.password,
-      turnstile_token: input.turnstile_token,
     },
   });
 }
@@ -40,7 +36,7 @@ export async function register(input: RegisterInput): Promise<AuthSession> {
 export async function login(input: LoginInput): Promise<AuthSession> {
   return api<AuthSession>("/auth/login", {
     method: "POST",
-    body: { email: input.email, password: input.password, turnstile_token: input.turnstile_token },
+    body: { email: input.email, password: input.password },
   });
 }
 
@@ -53,24 +49,10 @@ export async function refreshSession(): Promise<AuthSession> {
   return api<AuthSession>("/auth/refresh", { method: "POST" });
 }
 
-export async function verifyEmail(input: VerifyEmailInput): Promise<AuthSession> {
-  return api<AuthSession>("/auth/verify-email", {
-    method: "POST",
-    body: { token: input.token },
-  });
-}
-
-export async function resendVerification(input: ResendVerificationInput): Promise<EmptyResponse> {
-  return api<EmptyResponse>("/auth/resend-verification", {
-    method: "POST",
-    body: { email: input.email, turnstile_token: input.turnstile_token },
-  });
-}
-
 export async function requestPasswordReset(input: ForgotPasswordInput): Promise<EmptyResponse> {
   return api<EmptyResponse>("/auth/forgot-password", {
     method: "POST",
-    body: { email: input.email, turnstile_token: input.turnstile_token },
+    body: { email: input.email },
   });
 }
 
@@ -80,7 +62,6 @@ export async function resetPassword(input: ResetPasswordInput): Promise<EmptyRes
     body: {
       token: input.token,
       new_password: input.new_password,
-      turnstile_token: input.turnstile_token,
     },
   });
 }
@@ -89,7 +70,7 @@ export async function resetPassword(input: ResetPasswordInput): Promise<EmptyRes
 // Silent refresh: single-flight + retry-once. Exactly one refresh request is
 // ever in flight (concurrent expiries share it); a failed refresh resolves to
 // "signed out" instead of looping. Applies ONLY to session reads/writes below:
-// login/register/verify/reset/logout each define their own 401 semantics and
+// login/register/reset/logout each define their own 401 semantics and
 // must surface them directly.
 // ---------------------------------------------------------------------------
 

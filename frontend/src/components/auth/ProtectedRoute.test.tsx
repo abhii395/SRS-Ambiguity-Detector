@@ -102,33 +102,12 @@ describe("ProtectedRoute", () => {
     });
     render(
       <AuthProvider>
-        <ProtectedRoute requireVerified>
+        <ProtectedRoute>
           <p>Private stuff</p>
         </ProtectedRoute>
       </AuthProvider>,
     );
     await waitFor(() => expect(screen.getByText("Private stuff")).not.toBeNull());
-    expect(nav.replace).not.toHaveBeenCalled();
-  });
-
-  it("gates unverified users behind a nudge with resend recovery", async () => {
-    stubFetch((url) => {
-      if (url.includes("/auth/me")) return userResponse(false);
-      return envelope("invalid_token", 400);
-    });
-    render(
-      <AuthProvider>
-        <ProtectedRoute requireVerified>
-          <p>Private stuff</p>
-        </ProtectedRoute>
-      </AuthProvider>,
-    );
-    await waitFor(() =>
-      expect(screen.getByRole("heading", { name: "Verify your email to continue" })).not.toBeNull(),
-    );
-    expect(screen.queryByText("Private stuff")).toBeNull();
-    expect(screen.getByRole("form", { name: "Resend verification email" })).not.toBeNull();
-    expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("ada@example.com");
     expect(nav.replace).not.toHaveBeenCalled();
   });
 

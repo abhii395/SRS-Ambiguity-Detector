@@ -1,8 +1,7 @@
 "use client";
 
 /**
- * Saved-report route screen (`/analysis/[id]`, Stage 09): verified-users-only
- * (`ProtectedRoute requireVerified` — the API gates the same way, and a
+ * Saved-report route screen (`/analysis/[id]`, Stage 09): authenticated-users-only.
  * foreign id reads back 404 without leaking anything). Ownership + existence
  * failures share one honest not-found panel (never "access denied", which
  * would confirm a foreign id exists); an exhausted session gets a sign-in
@@ -188,7 +187,7 @@ function ReportContent() {
 
 export function AnalysisReportScreen() {
   return (
-    <ProtectedRoute requireVerified>
+    <ProtectedRoute>
       <ReportContent />
     </ProtectedRoute>
   );
